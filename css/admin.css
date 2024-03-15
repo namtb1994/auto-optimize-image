@@ -1,0 +1,118 @@
+.section-info-options input[type="text"],
+.section-info-options select {
+    width: 100%;
+    max-width: 100%;
+}
+.section-info-options input.error,
+.section-info-options select.error {
+    border: 1px solid red;
+}
+.section-info-options select[multiple] {
+    height: 200px;
+    overflow: auto;
+}
+.section-info-options .field {
+    margin-bottom: 15px;
+}
+.section-info-options .field.required label:after {
+    content: '*';
+    color: red;
+    margin-left: 5px;
+}
+.section-info-options button:not(.link) {
+    color: #fff;
+    background-color: #232323;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 3px;
+    cursor: pointer;
+}
+.section-info-options button.link {
+    border: none;
+    text-decoration: underline;
+    cursor: pointer;
+    font-weight: bold;
+}
+.section-info-options button[data-action="clear"]:not(.show) {
+    display: none;
+}
+.section-info-options .save-info .message {
+    display: none;
+}
+.section-info-options .save-info .message.error,
+.section-info-options .save-info .message.updated {
+    display: block;
+    padding: 10px;
+    margin: 20px 0 0 0;
+}
+.section-info-options .insert-xml-post {
+    opacity: 0;
+    visibility: hidden;
+}
+.section-info-options .insert-xml-post.active {
+    opacity: 1;
+    visibility: visible;
+}
+.section-info-options .box-loading.loading {
+    background: url(../images/ajax_spinner.svg);
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-color: rgb(0 0 0 / 40%);
+    z-index: 99;
+}
+.section-info-options.container {
+    padding: 0 15px;
+}
+.section-info-options .row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -15px;
+}
+.section-info-options .row .col-6 {
+    box-sizing: border-box;
+    width: 50%;
+    padding: 0 15px;
+}
+.section-info-options .row .col-4 {
+    box-sizing: border-box;
+    width: 33.3333%;
+    padding: 0 15px;
+}
+.section-info-options .row .col-8 {
+    box-sizing: border-box;
+    width: 66.6666%;
+    padding: 0 15px;
+}
+.section-info-options .row .col-12 {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 0 15px;
+}
+.section-info-options .list-image-not-exist .items {
+    max-width: 100%;
+    text-align: left;
+    margin-top: 30px;
+}
+.section-info-options .list-image-not-exist .items th,
+.section-info-options .list-image-not-exist .items td {
+    padding: 5px 10px;
+}
+.tutorial ul li textarea {
+    position: fixed;
+    opacity: 0;
+    width: 100%;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: 0;
+    z-index: 0;
+}
+.short_code_render ul {
+    padding: 15px;
+    border: 1px solid #ccc;
+}
