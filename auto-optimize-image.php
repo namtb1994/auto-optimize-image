@@ -5,22 +5,22 @@ Author: Wayne
 Version: 1.0.0
 */
 
-function autoOptimizeImage_register_options_page() {
+function autoOptimizeImage_register_options_page(): void {
     add_menu_page('Auto optimize image', 'Auto optimize image', 'manage_options', 'auto-optimize-image', 'autoOptimizeImage_backendOptions', '', 4.0);
 }
 add_action('admin_menu', 'autoOptimizeImage_register_options_page');
 
-function autoOptimizeImage_register_admin_resources() {
+function autoOptimizeImage_register_admin_resources(): void {
     wp_register_style( 'autoOptimizeImage-admin-style',  plugins_url( '/css/admin.css', __FILE__ ), array(), null) ;
     wp_enqueue_style('autoOptimizeImage-admin-style');
 }
 add_action( 'admin_enqueue_scripts', 'autoOptimizeImage_register_admin_resources' );
 
-function autoOptimizeImage_backendOptions() {
+function autoOptimizeImage_backendOptions(): void {
     $dataOptions = autoOptimizeImage_getOptions();
     $apiKey = null;
-    if ($dataOptions) {
-        $apiKey = $dataOptions->api_key;
+    if (!empty($dataOptions)) {
+        $apiKey = $dataOptions['api_key'];
     }
 ?>
     <div class="section-info-options container">
@@ -95,7 +95,7 @@ function autoOptimizeImage_backendOptions() {
 <?php
 }
 
-function autoOptimizeImage_saveOptions() {
+function autoOptimizeImage_saveOptions(): void {
     $data = [
         "status" => 'error',
         "message" => __('Have Error! Please try again')
@@ -124,15 +124,15 @@ function autoOptimizeImage_saveOptions() {
 add_action('wp_ajax_autoOptimizeImage_saveOptions', 'autoOptimizeImage_saveOptions');
 add_action('wp_ajax_nopriv_autoOptimizeImage_saveOptions', 'autoOptimizeImage_saveOptions');
 
-function autoOptimizeImage_getOptions() {
+function autoOptimizeImage_getOptions(): array {
     $data = get_option('auto_optimize_image_options');
     if ($data != '') {
         $data = json_decode($data);
 
-        return $data;
+        return (array) $data;
     }
 
-    return null;
+    return [];
 }
 
 function autoOptimizeImage_handle_upload(array $file): array {
@@ -152,8 +152,8 @@ function autoOptimizeImage_optimize_request(array $file): ?string {
     $dataOptions = autoOptimizeImage_getOptions();
     $apiKey = null;
 
-    if ($dataOptions) {
-        $apiKey = $dataOptions->api_key;
+    if (!empty($dataOptions)) {
+        $apiKey = $dataOptions['api_key'];
     }
 
     if (!$apiKey) {
@@ -187,8 +187,8 @@ function autoOptimizeImage_download_request(string $url): ?string {
     $dataOptions = autoOptimizeImage_getOptions();
     $apiKey = null;
 
-    if ($dataOptions) {
-        $apiKey = $dataOptions->api_key;
+    if (!empty($dataOptions)) {
+        $apiKey = $dataOptions['api_key'];
     }
 
     if (!$apiKey) {
