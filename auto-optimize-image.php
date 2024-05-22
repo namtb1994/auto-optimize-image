@@ -2,21 +2,24 @@
 /**
 Plugin Name: Auto optimize image
 Author: Wayne
-Version: 1.0.0
+Version: 1.0.1
 */
 
-function autoOptimizeImage_register_options_page(): void {
+function autoOptimizeImage_register_options_page(): void
+{
     add_menu_page('Auto optimize image', 'Auto optimize image', 'manage_options', 'auto-optimize-image', 'autoOptimizeImage_backendOptions', '', 4.0);
 }
 add_action('admin_menu', 'autoOptimizeImage_register_options_page');
 
-function autoOptimizeImage_register_admin_resources(): void {
+function autoOptimizeImage_register_admin_resources(): void
+{
     wp_register_style( 'autoOptimizeImage-admin-style',  plugins_url( '/css/admin.css', __FILE__ ), array(), null) ;
     wp_enqueue_style('autoOptimizeImage-admin-style');
 }
 add_action( 'admin_enqueue_scripts', 'autoOptimizeImage_register_admin_resources' );
 
-function autoOptimizeImage_backendOptions(): void {
+function autoOptimizeImage_backendOptions(): void
+{
     $dataOptions = autoOptimizeImage_getOptions();
     $apiKey = null;
     if (!empty($dataOptions)) {
@@ -95,7 +98,8 @@ function autoOptimizeImage_backendOptions(): void {
 <?php
 }
 
-function autoOptimizeImage_saveOptions(): void {
+function autoOptimizeImage_saveOptions(): void
+{
     $data = [
         "status" => 'error',
         "message" => __('Have Error! Please try again')
@@ -124,7 +128,8 @@ function autoOptimizeImage_saveOptions(): void {
 add_action('wp_ajax_autoOptimizeImage_saveOptions', 'autoOptimizeImage_saveOptions');
 add_action('wp_ajax_nopriv_autoOptimizeImage_saveOptions', 'autoOptimizeImage_saveOptions');
 
-function autoOptimizeImage_getOptions(): array {
+function autoOptimizeImage_getOptions(): array
+{
     $data = get_option('auto_optimize_image_options');
     if ($data != '') {
         $data = json_decode($data);
@@ -135,7 +140,8 @@ function autoOptimizeImage_getOptions(): array {
     return [];
 }
 
-function autoOptimizeImage_handle_upload(array $file): array {
+function autoOptimizeImage_handle_upload(array $file): array
+{
     $responseOptimize = autoOptimizeImage_optimize_request($file);
     if ($responseOptimize) {
         $responseOptimize = (array) json_decode($responseOptimize);
@@ -148,7 +154,14 @@ function autoOptimizeImage_handle_upload(array $file): array {
 }
 add_filter('wp_handle_upload_prefilter', 'autoOptimizeImage_handle_upload' );
 
-function autoOptimizeImage_optimize_request(array $file): ?string {
+function autoOptimizeImage_set_optimized($attachment_id): void
+{
+    update_post_meta($attachment_id, 'optimized', '1');
+}
+add_action('add_attachment', 'autoOptimizeImage_set_optimized' );
+
+function autoOptimizeImage_optimize_request(array $file): ?string
+{
     $dataOptions = autoOptimizeImage_getOptions();
     $apiKey = null;
 
@@ -183,7 +196,8 @@ function autoOptimizeImage_optimize_request(array $file): ?string {
     }
 }
 
-function autoOptimizeImage_download_request(string $url): ?string {
+function autoOptimizeImage_download_request(string $url): ?string
+{
     $dataOptions = autoOptimizeImage_getOptions();
     $apiKey = null;
 
@@ -209,3 +223,125 @@ function autoOptimizeImage_download_request(string $url): ?string {
         return null;
     }
 }
+
+function autoOptimizeImage_add_custom_media_column(array $columns): array
+{
+    $columns['optimized'] = 'Optimized';
+
+    return $columns;
+}
+add_filter('manage_media_columns', 'autoOptimizeImage_add_custom_media_column');
+
+function autoOptimizeImage_display_custom_media_column(string $columnName, int $postId): void
+{
+    if ($columnName == 'optimized') {
+        $optimized = get_post_meta($postId, 'optimized', true);
+        echo $optimized ? 'Yes' : 'No';
+    }
+}
+add_action('manage_media_custom_column', 'autoOptimizeImage_display_custom_media_column', 10, 2);
+
+function autoOptimizeImage_add_optimized_filter_to_media_library()
+{
+    $screen = get_current_screen();
+    if ($screen->id !== 'upload') {
+        return;
+    }
+
+    $value = isset($_GET['optimized_filter']) ? $_GET['optimized_filter'] : '';
+    ?>
+    <select name="optimized_filter">
+        <option value=""><?php _e('All', 'textdomain'); ?></option>
+        <option value="1" <?php selected($value, '1'); ?>><?php _e('Images Optimized', 'textdomain'); ?></option>
+        <option value="0" <?php selected($value, '0'); ?>><?php _e('Images Not Optimized', 'textdomain'); ?></option>
+    </select>
+    <?php
+}
+add_action('restrict_manage_posts', 'autoOptimizeImage_add_optimized_filter_to_media_library');
+
+function autoOptimizeImage_filter_media_library_by_optimized(WP_Query $query)
+{
+    if (!is_admin() || !$query->is_main_query() || $query->get('post_type') !== 'attachment') {
+        return;
+    }
+
+    if (isset($_GET['optimized_filter']) && $_GET['optimized_filter'] !== '') {
+        $meta_query = [
+            'relation' => 'OR',
+            [
+                'key'   => 'optimized',
+                'value' => $_GET['optimized_filter'],
+                'compare' => '=',
+            ],
+        ];
+
+        if ($_GET['optimized_filter'] == '0') {
+            $meta_query[] = [
+                'key'     => 'optimized',
+                'compare' => 'NOT EXISTS',
+            ];
+        }
+
+        $query->set('post_mime_type', 'image');
+        $query->set('meta_query', $meta_query);
+    }
+}
+add_action('pre_get_posts', 'autoOptimizeImage_filter_media_library_by_optimized');
+
+function autoOptimizeImage_register_bulk_actions(array $bulkActions): array
+{
+    $bulkActions['optimize'] = __('Optimize', 'textdomain');
+
+    return $bulkActions;
+}
+add_filter('bulk_actions-upload', 'autoOptimizeImage_register_bulk_actions');
+
+function autoOptimizeImage_handle_bulk_actions(string $redirectTo, string $doaction, array $postIds): string
+{
+    if ($doaction === 'optimize') {
+        $count = 0;
+        foreach ($postIds as $postId) {
+            $optimized = get_post_meta($postId, 'optimized', true);
+
+            if ($optimized === '1') {
+                continue;
+            }
+
+            $filePath = get_attached_file($postId);
+            $fileData = [
+                'type' => get_post_mime_type($postId),
+                'tmp_name' => $filePath,
+            ];
+            $responseOptimize = autoOptimizeImage_optimize_request($fileData);
+
+            if ($responseOptimize) {
+                $responseOptimize = (array) json_decode($responseOptimize);
+                $responseOptimizeOutput = (array) $responseOptimize['output'];
+                $responseDownload = autoOptimizeImage_download_request($responseOptimizeOutput['url']);
+                file_put_contents($filePath, $responseDownload);
+                $attachmentMeta = wp_get_attachment_metadata($postId);
+                $attachmentMeta['filesize'] = filesize($filePath);
+                wp_update_attachment_metadata($postId, $attachmentMeta);
+                update_post_meta($postId, 'optimized', '1');
+            }
+            
+            $count++;
+        }
+
+        $redirectTo = add_query_arg('bulk_optimize', $count, $redirectTo);
+    }
+
+    return $redirectTo;
+}
+add_filter('handle_bulk_actions-upload', 'autoOptimizeImage_handle_bulk_actions', 10, 3);
+
+function autoOptimizeImage_bulk_action_admin_notice(): void
+{
+    if (!empty($_REQUEST['bulk_optimize'])) {
+        $count = intval($_REQUEST['bulk_optimize']);
+        printf('<div id="message" class="updated notice is-dismissible"><p>' .
+            _n('Optimize for %s image.', 'Optimize for %s images.', $count, 'textdomain') . '</p></div>', $count);
+    }
+}
+add_action('admin_notices', 'autoOptimizeImage_bulk_action_admin_notice');
+
