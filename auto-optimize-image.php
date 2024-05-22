@@ -142,21 +142,30 @@ function autoOptimizeImage_getOptions(): array
 
 function autoOptimizeImage_handle_upload(array $file): array
 {
-    $responseOptimize = autoOptimizeImage_optimize_request($file);
-    if ($responseOptimize) {
-        $responseOptimize = (array) json_decode($responseOptimize);
-        $responseOptimizeOutput = (array) $responseOptimize['output'];
-        $responseDownload = autoOptimizeImage_download_request($responseOptimizeOutput['url']);
-        file_put_contents($file['tmp_name'], $responseDownload);
+    if (!isset($file['tmp_name']) || !@getimagesize($file['tmp_name'])) {
+        return $file;
     }
+
+    $responseOptimize = autoOptimizeImage_optimize_request($file);
+
+    if (!$responseOptimize) {
+        return $file;
+    }
+
+    $responseOptimize = (array) json_decode($responseOptimize);
+    $responseOptimizeOutput = (array) $responseOptimize['output'];
+    $responseDownload = autoOptimizeImage_download_request($responseOptimizeOutput['url']);
+    file_put_contents($file['tmp_name'], $responseDownload);
 
     return $file;
 }
 add_filter('wp_handle_upload_prefilter', 'autoOptimizeImage_handle_upload' );
 
-function autoOptimizeImage_set_optimized($attachment_id): void
+function autoOptimizeImage_set_optimized($attachmentId): void
 {
-    update_post_meta($attachment_id, 'optimized', '1');
+    if (wp_attachment_is_image($attachmentId)) {
+        update_post_meta($attachmentId, 'optimized', '1');
+    }
 }
 add_action('add_attachment', 'autoOptimizeImage_set_optimized' );
 
@@ -235,8 +244,12 @@ add_filter('manage_media_columns', 'autoOptimizeImage_add_custom_media_column');
 function autoOptimizeImage_display_custom_media_column(string $columnName, int $postId): void
 {
     if ($columnName == 'optimized') {
-        $optimized = get_post_meta($postId, 'optimized', true);
-        echo $optimized ? 'Yes' : 'No';
+        if (!wp_attachment_is_image($postId)) {
+            echo 'N/A';
+        } else {
+            $optimized = get_post_meta($postId, 'optimized', true);
+            echo $optimized ? 'Yes' : 'No';
+        }
     }
 }
 add_action('manage_media_custom_column', 'autoOptimizeImage_display_custom_media_column', 10, 2);
@@ -266,7 +279,7 @@ function autoOptimizeImage_filter_media_library_by_optimized(WP_Query $query)
     }
 
     if (isset($_GET['optimized_filter']) && $_GET['optimized_filter'] !== '') {
-        $meta_query = [
+        $metaQuery = [
             'relation' => 'OR',
             [
                 'key'   => 'optimized',
@@ -276,14 +289,14 @@ function autoOptimizeImage_filter_media_library_by_optimized(WP_Query $query)
         ];
 
         if ($_GET['optimized_filter'] == '0') {
-            $meta_query[] = [
+            $metaQuery[] = [
                 'key'     => 'optimized',
                 'compare' => 'NOT EXISTS',
             ];
         }
 
         $query->set('post_mime_type', 'image');
-        $query->set('meta_query', $meta_query);
+        $query->set('meta_query', $metaQuery);
     }
 }
 add_action('pre_get_posts', 'autoOptimizeImage_filter_media_library_by_optimized');
@@ -303,7 +316,7 @@ function autoOptimizeImage_handle_bulk_actions(string $redirectTo, string $doact
         foreach ($postIds as $postId) {
             $optimized = get_post_meta($postId, 'optimized', true);
 
-            if ($optimized === '1') {
+            if ($optimized === '1' || !wp_attachment_is_image($postId)) {
                 continue;
             }
 
