@@ -140,36 +140,30 @@ function autoOptimizeImage_getOptions(): array
     return [];
 }
 
-function autoOptimizeImage_handle_upload(array $file): array
-{
-    if (!isset($file['tmp_name']) || !@getimagesize($file['tmp_name'])) {
-        return $file;
-    }
-
-    $responseOptimize = autoOptimizeImage_optimize_request($file);
-
-    if (!$responseOptimize) {
-        return $file;
-    }
-
-    $responseOptimize = (array) json_decode($responseOptimize);
-    $responseOptimizeOutput = (array) $responseOptimize['output'];
-    $responseDownload = autoOptimizeImage_download_request($responseOptimizeOutput['url']);
-    file_put_contents($file['tmp_name'], $responseDownload);
-
-    return $file;
-}
-add_filter('wp_handle_upload_prefilter', 'autoOptimizeImage_handle_upload' );
-
-function autoOptimizeImage_set_optimized($attachmentId): void
+function autoOptimizeImage_handle_add_attachment(int $attachmentId): void
 {
     if (wp_attachment_is_image($attachmentId)) {
-        update_post_meta($attachmentId, 'optimized', '1');
+        $filePath = get_attached_file($attachmentId);
+        if ($filePath) {
+            $fileData = [
+                'type' => get_post_mime_type($attachmentId),
+                'path' => $filePath,
+            ];
+            $responseOptimize = autoOptimizeImage_optimize_request($fileData);
+
+            if ($responseOptimize) {
+                $responseOptimize = (array) json_decode($responseOptimize);
+                $responseOptimizeOutput = (array) $responseOptimize['output'];
+                $responseDownload = autoOptimizeImage_download_request($responseOptimizeOutput['url']);
+                file_put_contents($filePath, $responseDownload);
+                update_post_meta($attachmentId, 'optimized', '1');
+            }
+        }
     }
 }
-add_action('add_attachment', 'autoOptimizeImage_set_optimized' );
+add_action('add_attachment', 'autoOptimizeImage_handle_add_attachment' );
 
-function autoOptimizeImage_optimize_request(array $file): ?string
+function autoOptimizeImage_optimize_request(array $fileData): ?string
 {
     $dataOptions = autoOptimizeImage_getOptions();
     $apiKey = null;
@@ -188,10 +182,10 @@ function autoOptimizeImage_optimize_request(array $file): ?string
     curl_setopt($ch, CURLOPT_URL, $apiUrl);
     curl_setopt($ch, CURLOPT_USERPWD, "api:$apiKey");
     curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, file_get_contents($file['tmp_name']));
+    curl_setopt($ch, CURLOPT_POSTFIELDS, file_get_contents($fileData['path']));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: ' . $file['type'],
+        'Content-Type: ' . $fileData['type'],
     ]);
 
     $response = curl_exec($ch);
@@ -254,31 +248,31 @@ function autoOptimizeImage_display_custom_media_column(string $columnName, int $
 }
 add_action('manage_media_custom_column', 'autoOptimizeImage_display_custom_media_column', 10, 2);
 
-function autoOptimizeImage_add_optimized_filter_to_media_library()
+function autoOptimizeImage_add_optimized_filter_to_media_library(): void
 {
     $screen = get_current_screen();
-    if ($screen->id !== 'upload') {
-        return;
+    if ($screen->id == 'upload') {
+        $value = isset($_GET['optimized_filter']) ? $_GET['optimized_filter'] : '';
+        ?>
+        <select name="optimized_filter">
+            <option value=""><?php _e('All', 'textdomain'); ?></option>
+            <option value="1" <?php selected($value, '1'); ?>><?php _e('Images Optimized', 'textdomain'); ?></option>
+            <option value="0" <?php selected($value, '0'); ?>><?php _e('Images Not Optimized', 'textdomain'); ?></option>
+        </select>
+        <?php
     }
-
-    $value = isset($_GET['optimized_filter']) ? $_GET['optimized_filter'] : '';
-    ?>
-    <select name="optimized_filter">
-        <option value=""><?php _e('All', 'textdomain'); ?></option>
-        <option value="1" <?php selected($value, '1'); ?>><?php _e('Images Optimized', 'textdomain'); ?></option>
-        <option value="0" <?php selected($value, '0'); ?>><?php _e('Images Not Optimized', 'textdomain'); ?></option>
-    </select>
-    <?php
 }
 add_action('restrict_manage_posts', 'autoOptimizeImage_add_optimized_filter_to_media_library');
 
-function autoOptimizeImage_filter_media_library_by_optimized(WP_Query $query)
+function autoOptimizeImage_filter_media_library_by_optimized(WP_Query $query): void
 {
-    if (!is_admin() || !$query->is_main_query() || $query->get('post_type') !== 'attachment') {
-        return;
-    }
-
-    if (isset($_GET['optimized_filter']) && $_GET['optimized_filter'] !== '') {
+    if (
+        is_admin()
+        && $query->is_main_query()
+        && $query->get('post_type') == 'attachment'
+        && isset($_GET['optimized_filter'])
+        && $_GET['optimized_filter'] !== ''
+    ) {
         $metaQuery = [
             'relation' => 'OR',
             [
@@ -323,7 +317,7 @@ function autoOptimizeImage_handle_bulk_actions(string $redirectTo, string $doact
             $filePath = get_attached_file($postId);
             $fileData = [
                 'type' => get_post_mime_type($postId),
-                'tmp_name' => $filePath,
+                'path' => $filePath,
             ];
             $responseOptimize = autoOptimizeImage_optimize_request($fileData);
 
@@ -357,4 +351,3 @@ function autoOptimizeImage_bulk_action_admin_notice(): void
     }
 }
 add_action('admin_notices', 'autoOptimizeImage_bulk_action_admin_notice');
-
