@@ -38,6 +38,13 @@ function autoOptimizeImage_backendOptions(): void
                     <div class="field required">
                         <label for="api_key"><?= __( 'Api Key', 'autoOptimizeImage' ); ?></label><br />
                         <input id="api_key" type="text" name="api_key" value="<?= $apiKey ?>">
+                        <p>
+                            <?= sprintf(
+                                __('To obtain an API Key, create an account on %s. Then, visit %s to generate and retrieve your API Key.', 'autoOptimizeImage'),
+                                '<a href="https://tinify.com/">https://tinify.com/</a>',
+                                '<a href="https://tinify.com/dashboard/api">https://tinify.com/dashboard/api</a>'
+                            ) ?>
+                        </p>
                     </div>
                     <div class="field actions">
                         <button type="submit" data-action="update"><?= __('Save', 'autoOptimizeImage') ?></button>
