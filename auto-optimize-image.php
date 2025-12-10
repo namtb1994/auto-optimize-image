@@ -2,12 +2,12 @@
 /**
 Plugin Name: Auto optimize image
 Author: Wayne
-Version: 1.0.1
+Version: 1.0.2
 */
 
 function autoOptimizeImage_register_options_page(): void
 {
-    add_menu_page('Auto optimize image', 'Auto optimize image', 'manage_options', 'auto-optimize-image', 'autoOptimizeImage_backendOptions', '', 4.0);
+    add_menu_page(__('Auto optimize image', 'autoOptimizeImage'), __('Auto optimize image', 'autoOptimizeImage'), 'manage_options', 'auto-optimize-image', 'autoOptimizeImage_backendOptions', '', 4.0);
 }
 add_action('admin_menu', 'autoOptimizeImage_register_options_page');
 
@@ -32,15 +32,15 @@ function autoOptimizeImage_backendOptions(): void
         </div>
         <div class="row">
             <div class="save-info col-6">
-                <h1><?= esc_html( __( 'Configuration' ) ); ?></h1>
+                <h1><?= __( 'Configuration', 'autoOptimizeImage' ); ?></h1>
                 <hr>
                 <form action="" method="post" class="data-options">
                     <div class="field required">
-                        <label for="api_key"><?= esc_html( __( 'Api Key' ) ); ?></label><br />
+                        <label for="api_key"><?= __( 'Api Key', 'autoOptimizeImage' ); ?></label><br />
                         <input id="api_key" type="text" name="api_key" value="<?= $apiKey ?>">
                     </div>
                     <div class="field actions">
-                        <button type="submit" data-action="update"><?= __('Save') ?></button>
+                        <button type="submit" data-action="update"><?= __('Save', 'autoOptimizeImage') ?></button>
                     </div>
                 </form>
                 <div class="message"></div>
@@ -102,7 +102,7 @@ function autoOptimizeImage_saveOptions(): void
 {
     $data = [
         "status" => 'error',
-        "message" => __('Have Error! Please try again')
+        "message" => __('Have Error! Please try again', 'autoOptimizeImage')
     ];
     if ( isset($_REQUEST['data']) ) {
         $dataInfo = [];
@@ -120,7 +120,7 @@ function autoOptimizeImage_saveOptions(): void
             add_option( 'auto_optimize_image_options', json_encode($dataInfo), '', 'yes' );
         }
         $data["status"] = 'updated';
-        $data["message"] = __('Save Info Success');
+        $data["message"] = __('Save Info Success', 'autoOptimizeImage');
 
     }
     wp_send_json_success($data);
@@ -239,10 +239,10 @@ function autoOptimizeImage_display_custom_media_column(string $columnName, int $
 {
     if ($columnName == 'optimized') {
         if (!wp_attachment_is_image($postId)) {
-            echo 'N/A';
+            echo __('N/A', 'autoOptimizeImage');
         } else {
             $optimized = get_post_meta($postId, 'optimized', true);
-            echo $optimized ? 'Yes' : 'No';
+            echo $optimized ? __('Yes', 'autoOptimizeImage') : __('No', 'autoOptimizeImage');
         }
     }
 }
@@ -255,9 +255,9 @@ function autoOptimizeImage_add_optimized_filter_to_media_library(): void
         $value = isset($_GET['optimized_filter']) ? $_GET['optimized_filter'] : '';
         ?>
         <select name="optimized_filter">
-            <option value=""><?php _e('All', 'textdomain'); ?></option>
-            <option value="1" <?php selected($value, '1'); ?>><?php _e('Images Optimized', 'textdomain'); ?></option>
-            <option value="0" <?php selected($value, '0'); ?>><?php _e('Images Not Optimized', 'textdomain'); ?></option>
+            <option value=""><?= __('All', 'autoOptimizeImage'); ?></option>
+            <option value="1" <?php selected($value, '1'); ?>><?= __('Images Optimized', 'autoOptimizeImage'); ?></option>
+            <option value="0" <?php selected($value, '0'); ?>><?= __('Images Not Optimized', 'autoOptimizeImage'); ?></option>
         </select>
         <?php
     }
@@ -297,7 +297,7 @@ add_action('pre_get_posts', 'autoOptimizeImage_filter_media_library_by_optimized
 
 function autoOptimizeImage_register_bulk_actions(array $bulkActions): array
 {
-    $bulkActions['optimize'] = __('Optimize', 'textdomain');
+    $bulkActions['optimize'] = __('Optimize', 'autoOptimizeImage');
 
     return $bulkActions;
 }
@@ -347,7 +347,7 @@ function autoOptimizeImage_bulk_action_admin_notice(): void
     if (!empty($_REQUEST['bulk_optimize'])) {
         $count = intval($_REQUEST['bulk_optimize']);
         printf('<div id="message" class="updated notice is-dismissible"><p>' .
-            _n('Optimize for %s image.', 'Optimize for %s images.', $count, 'textdomain') . '</p></div>', $count);
+            _n('Optimize for %s image.', 'Optimize for %s images.', $count, 'autoOptimizeImage') . '</p></div>', $count);
     }
 }
 add_action('admin_notices', 'autoOptimizeImage_bulk_action_admin_notice');
