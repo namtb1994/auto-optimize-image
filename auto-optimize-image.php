@@ -3,6 +3,7 @@
 Plugin Name: Auto optimize image
 Author: Wayne
 Version: 1.0.2
+Text Domain: autoOptimizeImage
 */
 
 function autoOptimizeImage_register_options_page(): void
